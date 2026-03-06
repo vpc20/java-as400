@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jt400">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/jt400.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
