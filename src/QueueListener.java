@@ -7,7 +7,7 @@ public class QueueListener {
 
     public static void main(String[] args) throws Exception {
 
-        AS400 system = new AS400("PUB400.COM", "MYUSER", "MYPASSWORD");
+        AS400 system = new AS400("PUB400.COM", "user", "password");
         // Force connection immediately so you know it's connected
         system.connectService(AS400.DATAQUEUE);
         DataQueue queue = new DataQueue(system, "/QSYS.LIB/VPCRZKH1.LIB/SAMPLEDQ.DTAQ");
