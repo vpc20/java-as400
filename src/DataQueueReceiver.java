@@ -1,7 +1,7 @@
 import com.ibm.as400.access.*;
-import com.ibm.as400.access.AS400;
-import com.ibm.as400.access.DataQueue;
-import com.ibm.as400.access.DataQueueEntry;
+//import com.ibm.as400.access.AS400;
+//import com.ibm.as400.access.DataQueue;
+//import com.ibm.as400.access.DataQueueEntry;
 import com.ibm.as400.access.Record;
 import java.math.BigDecimal;
 
@@ -19,7 +19,7 @@ public class DataQueueReceiver {
         format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), "BINARY_NEG"));
 
         // 1. Connect to IBM i
-        AS400 system = new AS400("PUB400.COM", "user", "password");
+        AS400 system = new AS400("PUB400.COM", "VPCRZKH", "vpcrzkh41");
 
         // Force connection immediately so you know it's connected
         system.connectService(AS400.DATAQUEUE);
