@@ -7,7 +7,7 @@ public class DataQueueReceiver {
     public static void main(String[] args) throws Exception {
 
         // 1. Connect to IBM i
-        AS400 system = new AS400("PUB400.COM", "MYUSER", "MYPASSWORD");
+        AS400 system = new AS400("PUB400.COM", "VPCRZKH", "vpcrzkh41");
 
         // Force connection immediately so you know it's connected
         system.connectService(AS400.DATAQUEUE);
