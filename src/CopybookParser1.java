@@ -1,5 +1,9 @@
-import java.util.*;
-import java.util.regex.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses a COBOL copybook and generates JT400 RecordFormat field descriptions.
@@ -14,15 +18,14 @@ import java.util.regex.*;
  * OCCURS handling:
  * - Field-level OCCURS  n  → emits n separate addFieldDescription() calls,
  * each field named FIELDNAME_1 .. FIELDNAME_n
- * - Group-level OCCURS  n  → every child field is expanded n times,
- * interleaved so all fields for index 1 appear before index 2, etc.
+ * - Group-level OCCURS  n  → every child field is expanded n times the same way
  * - Nested OCCURS           → outer × inner expansion (3 rows × 4 cols = 12 fields)
  * <p>
  * Usage:
  * List<String> lines = CopybookParser.parseCopybook(copybookString);
  * List<String> lines = CopybookParser.parseCopybookFile("MY.cpy");
  */
-public class CopybookParser {
+public class CopybookParser1 {
 
     // ── Internal model ───────────────────────────────────────────────────────
     private record CobolField(
@@ -126,6 +129,13 @@ public class CopybookParser {
     }
 
     // ── Line-continuation joiner ─────────────────────────────────────────────
+    /**
+     * Joins physical COBOL lines into logical lines.  Handles two cases:
+     * (a) Fixed-format: col 7 = '-'
+     * (b) Free-form: next line opens with a clause keyword (OCCURS, COMP-3,
+     * VALUE, REDEFINES ...) instead of a level number - very common when
+     * OCCURS is written on the line below PIC.
+     */
     private static final Pattern CONTINUATION_KW = Pattern.compile(
             "^\\s*(OCCURS|TIMES|COMP-[34]|COMP|VALUE|REDEFINES)\\b",
             Pattern.CASE_INSENSITIVE);
@@ -137,6 +147,7 @@ public class CopybookParser {
             String ind = r.length() > 6 ? String.valueOf(r.charAt(6)) : " ";
             String body = r.length() > 7 ? r.substring(7) : r;
             String stripped = body.strip();
+            // Skip blank / comment lines
             if (stripped.isEmpty() || stripped.startsWith("*")) {
                 if (buf != null) {
                     out.add(buf.toString());
@@ -144,9 +155,12 @@ public class CopybookParser {
                 }
                 continue;
             }
+            // Fixed-format continuation (col 7 = '-')
             if ("-".equals(ind) && buf != null) {
                 buf.append(" ").append(stripped.replaceAll("^'", ""));
-            } else if (CONTINUATION_KW.matcher(stripped).find() && buf != null) {
+            }
+            // Free-form: line starts with a clause keyword -> belongs to previous line
+            else if (CONTINUATION_KW.matcher(stripped).find() && buf != null) {
                 buf.append(" ").append(stripped);
             } else {
                 if (buf != null) out.add(buf.toString());
@@ -177,6 +191,7 @@ public class CopybookParser {
             if (gm.find()) {
                 int lv = Integer.parseInt(gm.group(1));
                 if (lv == 1) continue;
+                // group item: no PIC
                 fields.add(new CobolField(lv, gm.group(2), null, null,
                         gm.group(3) != null ? Integer.parseInt(gm.group(3)) : 0));
             }
@@ -187,81 +202,84 @@ public class CopybookParser {
     // ── Second pass: expand OCCURS ───────────────────────────────────────────
 
     /**
-     * Represents a node in a simple tree: either a group (with children)
-     * or a leaf (with pic/comp).
-     */
-    private static class Node {
-        CobolField field;
-        List<Node> children = new ArrayList<>();
-
-        Node(CobolField f) { this.field = f; }
-    }
-
-    /**
-     * Build a tree from the flat field list, then emit fields in the correct
-     * interleaved order by walking the tree and expanding OCCURS inline.
+     * Walk the field list maintaining a stack of ancestor (level → occursCount).
+     * For every leaf field the "effective occurs" is:
+     * own OCCURS  ×  product of all ancestor OCCURS counts
+     * <p>
+     * Each combination gets its own suffixed name:
+     * WS-ITEM-PRICE with parent OCCURS 3 → ITEM_PRICE_1, ITEM_PRICE_2, ITEM_PRICE_3
+     * WS-CELL with parent OCCURS 3 and own OCCURS 4 →
+     * CELL_1_1 .. CELL_1_4, CELL_2_1 .. CELL_2_4, CELL_3_1 .. CELL_3_4
      */
     public static List<String> parseCopybook(String copybook) {
         List<CobolField> fields = parseFields(copybook);
         List<String> output = new ArrayList<>();
 
-        // Build tree: use a stack of (level, node) to track current parents
-        List<Node> roots = new ArrayList<>();
-        Deque<Node> stack = new ArrayDeque<>();
+        // Stack entries: [level, occursCount, currentIndex (unused here)]
+        // We store (level, occurs) pairs to support nesting
+        Deque<int[]> stack = new ArrayDeque<>(); // [level, occurs]
 
         for (CobolField f : fields) {
-            Node node = new Node(f);
-            // Pop nodes that are at the same or deeper level
-            while (!stack.isEmpty() && stack.peek().field.level() >= f.level()) {
+            // Pop ancestors that are no longer parents
+            while (!stack.isEmpty() && stack.peek()[0] >= f.level())
                 stack.pop();
-            }
-            if (stack.isEmpty()) {
-                roots.add(node);
+
+            if (f.pic() == null) {
+                // Group item – only push if it carries OCCURS
+                if (f.occurs() > 0) {
+                    stack.push(new int[]{f.level(), f.occurs()});
+                    output.add(String.format("// ── GROUP %s  OCCURS %d ──",
+                            normalise(f.name()), f.occurs()));
+                }
             } else {
-                stack.peek().children.add(node);
+                // Leaf field – collect ancestor OCCURS counts (innermost first)
+                List<Integer> ancestorOccurs = new ArrayList<>();
+                for (int[] e : stack) ancestorOccurs.add(0, e[1]); // reverse → outermost first
+
+                int ownOccurs = f.occurs(); // 0 = no own OCCURS
+
+                if (ancestorOccurs.isEmpty() && ownOccurs == 0) {
+                    // Simple case – no OCCURS anywhere
+                    output.add(fieldDescLine(f.name(), f.pic(), f.comp(), null));
+                } else {
+                    // Build all index combinations
+                    if (ownOccurs > 0) {
+                        // Treat own OCCURS as innermost dimension
+                        ancestorOccurs.add(ownOccurs);
+                        output.add(String.format(
+                                "// %s  OCCURS %d (effective dimensions: %s)",
+                                normalise(f.name()), ownOccurs, ancestorOccurs));
+                    } else {
+                        output.add(String.format(
+                                "// %s  inherited from group OCCURS %s",
+                                normalise(f.name()), ancestorOccurs));
+                    }
+
+                    List<String> suffixes = buildSuffixes(ancestorOccurs);
+                    for (String suffix : suffixes) {
+                        output.add(fieldDescLine(f.name(), f.pic(), f.comp(), suffix));
+                    }
+                }
             }
-            stack.push(node);
         }
-
-        // Walk the tree, expanding OCCURS interleaved
-        for (Node root : roots) {
-            emitNode(root, "", output);
-        }
-
         return output;
     }
 
     /**
-     * Recursively emit field description lines for a node.
-     *
-     * @param node        the current node
-     * @param suffixSoFar accumulated index suffix from ancestor OCCURS (e.g. "_1_2")
-     * @param output      list to append lines to
+     * Given a list of dimension sizes [d1, d2, ...] produce every combination
+     * as a suffix string: "_1_1", "_1_2", ..., "_d1_d2".
      */
-    private static void emitNode(Node node, String suffixSoFar, List<String> output) {
-        CobolField f = node.field;
-        int occurs = f.occurs() > 0 ? f.occurs() : 1;
-
-        if (f.pic() == null) {
-            // Group node: expand OCCURS by iterating index, then recurse into children
-            for (int i = 1; i <= occurs; i++) {
-                String newSuffix = suffixSoFar + (f.occurs() > 0 ? "_" + i : "");
-                for (Node child : node.children) {
-                    emitNode(child, newSuffix, output);
-                }
-            }
-        } else {
-            // Leaf node: expand own OCCURS (if any) combined with inherited suffix
-            if (f.occurs() > 0) {
-                for (int i = 1; i <= occurs; i++) {
-                    output.add(fieldDescLine(f.name(), f.pic(), f.comp(),
-                            suffixSoFar + "_" + i));
-                }
-            } else {
-                String suffix = suffixSoFar.isEmpty() ? null : suffixSoFar;
-                output.add(fieldDescLine(f.name(), f.pic(), f.comp(), suffix));
-            }
+    private static List<String> buildSuffixes(List<Integer> dims) {
+        List<String> result = new ArrayList<>();
+        result.add("");  // seed
+        for (int dim : dims) {
+            List<String> next = new ArrayList<>();
+            for (String prev : result)
+                for (int i = 1; i <= dim; i++)
+                    next.add(prev + "_" + i);
+            result = next;
         }
+        return result;
     }
 
     /**

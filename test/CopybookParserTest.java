@@ -41,13 +41,11 @@ class CopybookParserTest {
                 """;
         myList = List.of(
                 "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(8, 0), \"ORDER_ID\"));",
-                "// LINE_AMT  OCCURS 5 (effective dimensions: [5])",
                 "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"LINE_AMT_1\"));",
                 "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"LINE_AMT_2\"));",
                 "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"LINE_AMT_3\"));",
                 "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"LINE_AMT_4\"));",
                 "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"LINE_AMT_5\"));",
-                "// LINE_CODE  OCCURS 5 (effective dimensions: [5])",
                 "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(3), \"LINE_CODE_1\"));",
                 "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(3), \"LINE_CODE_2\"));",
                 "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(3), \"LINE_CODE_3\"));",
@@ -56,30 +54,30 @@ class CopybookParserTest {
         );
         assertEquals(myList, CopybookParser.parseCopybook(cb1));
 
-//        System.out.println("Test 3");
-//        cb1 = """
-//                       01  WS-INVOICE.
-//                           05  WS-INV-NUMBER      PIC 9(8).
-//                           05  WS-INV-LINE        OCCURS 3 TIMES.
-//                               10  WS-ITEM-CODE   PIC X(5).
-//                               10  WS-ITEM-QTY    PIC S9(5)      COMP-4.
-//                               10  WS-ITEM-PRICE  PIC S9(7)V99   COMP-3.
-//                           05  WS-INV-TOTAL       PIC S9(9)V99   COMP-3.
-//                """;
-//        myList = List.of(
-//                "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(8, 0), \"INV_NUMBER\"));",
-//                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_1\"));",
-//                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_1\"));",
-//                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_1\"));",
-//                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_2\"));",
-//                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_2\"));",
-//                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_2\"));",
-//                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_3\"));",
-//                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_3\"));",
-//                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_3\"));",
-//                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(11, 2), \"INV_TOTAL\"));"
-//        );
-//        assertEquals(myList, CopybookParser.parseCopybook(cb1));
+        System.out.println("Test 3");
+        cb1 = """
+                       01  WS-INVOICE.
+                           05  WS-INV-NUMBER      PIC 9(8).
+                           05  WS-INV-LINE        OCCURS 3 TIMES.
+                               10  WS-ITEM-CODE   PIC X(5).
+                               10  WS-ITEM-QTY    PIC S9(5)      COMP-4.
+                               10  WS-ITEM-PRICE  PIC S9(7)V99   COMP-3.
+                           05  WS-INV-TOTAL       PIC S9(9)V99   COMP-3.
+                """;
+        myList = List.of(
+                "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(8, 0), \"INV_NUMBER\"));",
+                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_1\"));",
+                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_1\"));",
+                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_1\"));",
+                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_2\"));",
+                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_2\"));",
+                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_2\"));",
+                "format.addFieldDescription(new CharacterFieldDescription(new AS400Text(5), \"ITEM_CODE_3\"));",
+                "format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), \"ITEM_QTY_3\"));",
+                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(9, 2), \"ITEM_PRICE_3\"));",
+                "format.addFieldDescription(new PackedDecimalFieldDescription(new AS400PackedDecimal(11, 2), \"INV_TOTAL\"));"
+        );
+        assertEquals(myList, CopybookParser.parseCopybook(cb1));
 
 
         System.out.println("Test 4");
@@ -90,8 +88,6 @@ class CopybookParserTest {
                                                   OCCURS 4 TIMES.
                 """;
         myList = List.of(
-                "// ── GROUP ROW  OCCURS 3 ──",
-                "// CELL  OCCURS 4 (effective dimensions: [3, 4])",
                 "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(7, 2), \"CELL_1_1\"));",
                 "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(7, 2), \"CELL_1_2\"));",
                 "format.addFieldDescription(new ZonedDecimalFieldDescription(new AS400ZonedDecimal(7, 2), \"CELL_1_3\"));",
