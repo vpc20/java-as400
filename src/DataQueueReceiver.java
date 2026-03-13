@@ -19,7 +19,7 @@ public class DataQueueReceiver {
         format.addFieldDescription(new BinaryFieldDescription(new AS400Bin4(), "BINARY_NEG"));
 
         // 1. Connect to IBM i
-        AS400 system = new AS400("PUB400.COM", "VPCRZKH", "vpcrzkh41");
+        AS400 system = new AS400("PUB400.COM", "user", "password");
 
         // Force connection immediately so you know it's connected
         system.connectService(AS400.DATAQUEUE);
